@@ -34,7 +34,7 @@
 
             meta = with pkgs.lib; {
               description = "Doge Key Manager";
-              homepage = "https://github.com/dogeorg/dkm";
+              homepage = "https://github.com/Dogebox-WG/dkm";
               license = licenses.mit;
               maintainers = with maintainers; [ dogecoinfoundation ];
               platforms = platforms.all;
