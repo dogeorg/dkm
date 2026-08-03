@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"log"
+	"sync"
 	"time"
 
 	"code.dogecoin.org/dkm/internal"
@@ -42,6 +43,7 @@ var ErrWrongToken = errors.New("invalid token")
 var ErrBadKey = errors.New("bad stored key: cannot decode key")
 
 type keyMgr struct {
+	mu       sync.Mutex
 	store    internal.StoreCtx
 	sessions map[string]session
 	key      []byte
@@ -76,6 +78,9 @@ func (km *keyMgr) CreateKey(pass string) (mnemonic []string, err error) {
 }
 
 func (km *keyMgr) LogIn(pass string) (token string, ends int, err error) {
+	km.mu.Lock()
+	defer km.mu.Unlock()
+
 	km.cleanSessions()
 	// verify the password
 	key, _, err := km.getAndDecryptKey(MainKey, pass)
@@ -96,6 +101,9 @@ func (km *keyMgr) LogIn(pass string) (token string, ends int, err error) {
 }
 
 func (km *keyMgr) RollToken(token string) (newtoken string, ends int, err error) {
+	km.mu.Lock()
+	defer km.mu.Unlock()
+
 	km.cleanSessions()
 	now := time.Now()
 	if s, ok := km.sessions[token]; ok && !s.rolled && s.expires.After(now) {
@@ -112,6 +120,9 @@ func (km *keyMgr) RollToken(token string) (newtoken string, ends int, err error)
 }
 
 func (km *keyMgr) LogOut(token string) {
+	km.mu.Lock()
+	defer km.mu.Unlock()
+
 	// invalidate the token if it exists.
 	delete(km.sessions, token)
 	// remove key from memory after all sessions expire.
@@ -230,6 +241,9 @@ func (km *keyMgr) CreateDelegate(id string, pass string) (tok string, pubkey []b
 }
 
 func (km *keyMgr) MakeDelegate(id string, token string) (privkey []byte, pubkey []byte, wif string, e error) {
+	km.mu.Lock()
+	defer km.mu.Unlock()
+
 	km.cleanSessions()
 	if _, ok := km.sessions[token]; ok && km.key != nil {
 		master, err := doge.DecodeBip32WIF(string(km.key), &doge.DogeMainNetChain) // bad-key
